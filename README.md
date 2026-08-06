@@ -1,169 +1,135 @@
-# Documentación del Proyecto: Ploteador PCB / CNC Arduino Mega
+# Documentación del Proyecto: Ploteador PCB / CNC Arduino Mega 2560
 
-Este proyecto implementa un ploteador CNC de 2 ejes (X, Y) con elevador de lápiz/marcador en el eje Z mediante servomotor. El firmware está optimizado para **Arduino Mega 2560** mediante una arquitectura modular en C++ orientada a objetos, no bloqueante, sincronizada en microsegundos y con soporte para **streaming de comandos G-Code vía Puerto Serie**.
+Este proyecto implementa un ploteador CNC de 2 ejes (X, Y) con elevador de lápiz/marcador en el eje Z mediante servomotor. El firmware está optimizado para **Arduino Mega 2560** mediante una arquitectura modular orientada a objetos en C++, 100% no bloqueante, sincronizada en microsegundos y con soporte para **streaming de comandos G-Code en tiempo real vía Puerto Serie (115200 baudios)**.
 
 ---
 
 ## 📁 Estructura de Archivos del Proyecto
 
 ```text
-c:\Users\HP\Desktop\arduino\
+arduino/
 ├── Config.h            # Configuración global, pines, parámetros mecánicos y enums
+├── Config.cpp          # Definición única de la matriz de pasos bipolares (Regla ODR)
 ├── InputUtils.h        # Clases de periféricos (ServoZ y SwitchInput con debounce)
 ├── StepperMotor.h      # Interfaz de la clase de control de motores paso a paso
-├── StepperMotor.cpp    # Implementación de la secuencia de pasos de motores
+├── StepperMotor.cpp    # Implementación cinemática y bobinado de motores (4 fases bipolares)
 ├── MotionPlanner.h     # Interfaz del planificador de trayectorias (Bresenham)
-├── MotionPlanner.cpp   # Implementación del algoritmo de interpolación lineal 2D
+├── MotionPlanner.cpp   # Algoritmo de interpolación lineal 2D no bloqueante
 ├── GCodeParser.h       # Interfaz del parser de comandos G-Code y buffer serie
-├── GCodeParser.cpp     # Intérprete de comandos G-Code (G0, G1, G28, M3, M5)
-├── arduino_cnc.ino    # Archivo principal de Arduino (Setup, Loop y Estado Global)
-└── README.md           # Documentación del proyecto (este archivo)
+├── GCodeParser.cpp     # Intérprete de comandos G-Code (G0, G1, G28, M3, M5, G90, G91)
+├── sketch.ino          # Archivo principal de Arduino (Setup, Loop no bloqueante y Autoprueba)
+├── test_runner.cpp     # Suite de pruebas unitarias nativas en C++
+├── build_mega.ps1      # Script de compilación independiente AVR-GCC -> build/sketch.ino.elf
+├── diagram.json        # Diagrama circuital interactivo para el simulador Wokwi
+├── wokwi.toml          # Configuración del entorno de simulación Wokwi
+└── README.md           # Documentación completa del proyecto
 ```
 
 ---
 
-## 🛠️ Descripción de Módulos y Funciones
+## 🛠️ Descripción Módulo por Módulo
 
-### 1. `Config.h`
-Centraliza todas las constantes del hardware, parámetros de calibración, temporizaciones y definiciones del sistema.
+### 1. `Config.h` y `Config.cpp`
+Centraliza la configuración de hardware, tiempos, resoluciones y definiciones del sistema.
 
-* **Constantes Clave:**
-  * Pines de motores (`PASO1_IN1..4`, `PASO2_IN1..4`) y switches (`PIN_SW1..5`).
-  * Tiempos de paso (`DELAY_PASO1_US`, `DELAY_PASO2_US`, `DELAY_INTERPOLADO_US`).
-  * Dimensiones físicas y offsets (`DISTANCIA_REAL_X/Y_CM`, `OFFSET_ORIGEN_X/Y_CM`).
-* **Estructuras y Enums:**
-  * `enum EstadoGlobal`: Estados principales del sistema (`SISTEMA_REPOSO`, `CALIBRANDO_INICIAL`, `TRAZANDO_DIBUJO`, `SISTEMA_ERROR`).
-  * `enum SubEstadoCalib`: Sub-estados de la calibración de cada eje.
-  * `struct Punto`: Define coordenadas `(x, y)` en cm y el estado del lápiz (`bajarLapiz`).
-  * `PASO_SECUENCIA[8][4]`: Matriz de medio paso (8 fases) para drivers ULN2003 / 28BYJ-48.
+* **Pines Asignados (Arduino Mega 2560):**
+  * **Motor Y (Polea):** Pines `22` (`A+`), `2` (`A-`), `3` (`B+`), `4` (`B-`).
+  * **Motor X (Husillo):** Pines `5` (`A+`), `6` (`A-`), `7` (`B+`), `8` (`B-`).
+  * **Servomotor Z:** Pin `13` (PWM).
+  * **Pulsador Principal SW1:** Pin `30` (Start/Stop).
+  * **Switches Fin de Carrera:** `PIN_SW2` (Pin 9), `PIN_SW3` (Pin 10), `PIN_SW4` (Pin 11), `PIN_SW5` (Pin 12).
+* **Parámetros Mecánicos y Tiempos:**
+  * `PASOS_POR_CM_DEFAULT_X` / `Y` = `100.0f` pasos/cm (Respuesta ágil).
+  * `DELAY_PASO1_US` / `DELAY_PASO2_US` / `DELAY_INTERPOLADO_US` = `2000 µs` (500 pasos/segundo).
+* **Secuencia de Pasos Bipolar (`PASO_SECUENCIA[4][4]` en `Config.cpp`):**
+  Garantiza pulsos electromagnéticos continuos de 90° por paso sin cortocircuitos de fase tanto en hardware real como en el modelo de motor bipolar de Wokwi.
 
 ---
 
 ### 2. `InputUtils.h`
-Contiene clases de utilidad no bloqueantes para el control de insumos y sensores.
+Contiene controladores de entrada y salida no bloqueantes.
 
 #### Clase `ServoZ` (Control del Lápiz)
-* `ServoZ(int pinServo)`: Constructor con asignación del pin del servo.
-* `void begin()`: Inicialización de variables de posición.
-* `void mover(int angulo)`: Conecta el servo y envía el pulso sin usar `delay()`.
-* `void update()`: Verifica el tiempo transcurrido (`TIEMPO_SERVO_MS`) y desconecta (`detach()`) el servo para evitar ruidos de retención.
-* `int getAnguloActual() const`: Retorna el ángulo actual configurado.
-* `bool estaEnMovimiento() const`: Indica si el servo está en transición de posición.
+* `ServoZ(int pinServo)`: Constructor con asignación de pin PWM.
+* `void begin()`: Inicializa el estado del servo.
+* `void mover(int angulo)`: Conecta el servo (`attach`) y envía la posición sin usar `delay()`.
+* `void update()`: Tras 250 ms desconecta (`detach`) el servo para evitar vibraciones o calentamiento.
 
-#### Clase `SwitchInput` (Filtrado de Antirrebote)
-* `SwitchInput(int pin, unsigned long debounceMs)`: Constructor con pin y ventana de tiempo de antirrebote (por defecto 35ms).
-* `void begin()`: Configura el pin como `INPUT_PULLUP` y obtiene la lectura inicial.
-* `bool update()`: Lee el pin y confirma cambios solo si la señal se mantiene estable por más del tiempo de debounce.
-* `bool isPressed() const`: Retorna `true` si la entrada está activa (`LOW`).
-* `int getEstado() const`: Retorna el estado estable del switch (`HIGH` / `LOW`).
+#### Clase `SwitchInput` (Antirrebote Digital)
+* `SwitchInput(int pin, unsigned long debounceMs)`: Configura el pin con `INPUT_PULLUP` y filtrado digital de antirrebote (10 ms por defecto).
+* `bool update()`: Evalúa la estabilidad de la lectura.
+* `bool isPressed() const`: Retorna `true` cuando el switch es activado (`LOW`).
 
 ---
 
 ### 3. `StepperMotor.h` y `StepperMotor.cpp`
-Abstrae el comportamiento físico de un motor paso a paso unipolar/bipolar accionado por fases.
+Controla el avance físico de los motores paso a paso.
 
-* `StepperMotor(int pin1, int pin2, int pin3, int pin4)`: Constructor con los 4 pines de bobinas.
-* `void begin()`: Configura los pines como salidas y los desenergiza.
-* `void darPaso(bool sentidoHorario)`: Avanza un paso en la secuencia de 8 fases e incrementa/decrementa la posición contada en pasos.
-* `void apagar()`: Pone los 4 pines en `LOW` para cortar el consumo eléctrico y prevenir calentamiento en reposo.
-* `long getPosicion() const`: Retorna la posición contada acumulada en pasos.
-* `void setPosicion(long pos)`: Restablece o establece arbitrariamente el contador de posición en pasos.
+* `StepperMotor(pin1, pin2, pin3, pin4)`: Asigna los 4 pines de fase.
+* `void darPaso(bool sentidoHorario)`: Avanza 1 paso en la secuencia de 4 fases bipolares y actualiza el contador acumulado.
+* `void apagar()`: Desenergiza todas las bobinas (`LOW`) para reposo térmico.
+* `long getPosicion()` / `void setPosicion(long pos)`: Lectura y ajuste del contador interno de pasos.
 
 ---
 
 ### 4. `MotionPlanner.h` y `MotionPlanner.cpp`
-Gestiona la cinemática de interpolación lineal coordinada de 2 ejes mediante el algoritmo de **Bresenham** no bloqueante.
+Ejecuta la cinemática coordinada 2D mediante el **Algoritmo de Interpolación Lineal de Bresenham**.
 
-* `MotionPlanner(StepperMotor& mx, StepperMotor& my)`: Asocia las referencias de los motores X e Y.
-* `void iniciarSegmento(long objX, long objY)`: Calcula deltas (`dx`, `dy`), sentido de dirección y el error inicial de Bresenham.
-* `bool update(unsigned long delayUs)`: Ejecuta los pasos sincronizados según el temporizador `micros()`. Retorna `true` cuando ambos ejes alcanzan la posición objetivo.
-* `bool isSegmentoIniciado() const`: Retorna si hay un segmento activo en ejecución.
-* `void resetSegmento()`: Reinicia el estado del planificador para un nuevo tramo.
+* `void iniciarSegmento(long objX, long objY)`: Calcula deltas, direcciones y error inicial.
+* `bool update(unsigned long delayUs)`: Efectúa pasos sincronizados sin bloquear el hilo principal. Retorna `true` al alcanzar la meta.
 
 ---
 
 ### 5. `GCodeParser.h` y `GCodeParser.cpp`
-Receptor e intérprete de comandos G-Code estándar para streaming en tiempo real vía USB.
+Intérprete de comandos G-Code estándar para transmisión por puerto serie.
 
-* `GCodeParser(MotionPlanner& mp, ServoZ& sz)`: Constructor asociado a las instancias del planificador y del servo.
-* `void escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar)`: Escucha la consola serie sin bloquear el CPU. Al recibir `\n` ejecuta el comando y responde `ok`.
-* `void procesarComando(...)`: Tokeniza y ejecuta instrucciones:
-  * `G0` / `G00`: Posicionamiento rápido.
-  * `G1` / `G01`: Movimiento lineal coordinado X/Y.
-  * `G28`: Autocalibración de ejes.
-  * `M3` / `M03`: Bajar lápiz (servomotor a `SERVO_ABAJO`).
-  * `M5` / `M05`: Levantar lápiz (servomotor a `SERVO_ARRIBA`).
-  * `G90` / `G91`: Conmutación entre coordenadas absolutas y relativas.
+* **Comandos Soportados:**
+  * `G0` / `G1`: Movimiento lineal coordinado X/Y.
+  * `G28`: Calibración automática de ejes.
+  * `M3`: Bajar marcador (posicionar lápiz sobre papel).
+  * `M5`: Levantar marcador (posicionar lápiz libre).
+  * `G90`: Modo de coordenadas absolutas.
+  * `G91`: Modo de coordenadas relativas (incrementales).
 
 ---
 
-### 6. `cnc.ino`
-Archivo de entrada de Arduino. Implementa la máquina de estados principal.
+### 6. `sketch.ino`
+Punto de entrada del firmware con máquina de estados no bloqueante.
 
-* `setup()`: Inicializa el puerto Serie a 9600 baudios, arranca periféricos y posiciona el servo levantado.
-* `loop()`: 
-  1. Escucha continuamente comandos G-Code vía `gcodeParser.escucharSerial(...)`.
-  2. Actualiza periódicamente `servoZ` y los 5 switches (`SW1` a `SW5`).
-  3. Detecta clics en `SW1` (clic simple = inicio calibración / parada de emergencia; doble clic = trazado directo).
-  4. Ejecuta el ciclo de calibración de ejes X e Y (`CALIBRANDO_INICIAL`) registrando distancias físicas y aplicando offsets.
-  5. Ejecuta el trazado estático o dinámico llamando al planificador.
-* `detencionDeEmergencia()`: Apaga motores, levanta lápiz y pasa el sistema a `SISTEMA_REPOSO`.
+* `setup()`: Configura Serial a **115200 baudios**, inicializa periféricos y ejecuta `runAutoTest()`.
+* `loop()`:
+  * Procesa `gcodeParser.escucharSerial(...)` continuamente.
+  * Actualiza periféricos (`sw1..5`, `servoZ`).
+  * Ejecuta `procesarCalibracionPaso()` de forma no bloqueante durante `CALIBRANDO_INICIAL`.
+  * Ejecuta la interpolación de trazado durante `TRAZANDO_DIBUJO`.
 
 ---
 
-## ⚠️ VALORES CRÍTICOS A REVISAR ANTES DE CARGAR AL ARDUINO MEGA
+## 🧪 Pruebas Unitarias y Compilación
 
-Antes de compilar y subir el código al **Arduino Mega 2560**, debes revisar cuidadosamente los siguientes parámetros en **[Config.h](file:///c:/Users/HP/Desktop/arduino/Config.h)**:
-
-### 1. Asignación Física de Pines
-```cpp
-const int PIN_SW1 = 30;   // Botón Start / Stop (Requiere Pull-up interno)
-
-// Motor Y (Polea)
-const int PASO1_IN1 = 22; // Evitar Pines 0 y 1 (Usados por Serial USB)
-const int PASO1_IN2 = 2;
-const int PASO1_IN3 = 3;
-const int PASO1_IN4 = 4;
-
-// Motor X (Husillo)
-const int PASO2_IN1 = 5;
-const int PASO2_IN2 = 6;
-const int PASO2_IN3 = 7;
-const int PASO2_IN4 = 8;
-
-// Fin de Carrera
-const int PIN_SW2 = 9;   // Límite A (Y)
-const int PIN_SW3 = 10;  // Límite B (Y)
-const int PIN_SW4 = 11;  // Límite A (X)
-const int PIN_SW5 = 12;  // Límite B (X)
-
-const int PIN_SERVO = 13; // Pin PWM del Servo Z
+### 1. Ejecutar Suite de Pruebas Nativas (C++)
+```bash
+g++ -std=c++11 -Imock_inc test_runner.cpp StepperMotor.cpp MotionPlanner.cpp GCodeParser.cpp Config.cpp -o test_runner.exe
+.\test_runner.exe
 ```
 
----
-
-### 2. Ángulos de Recorrido del Servomotor Z
-```cpp
-const int SERVO_ABAJO = 55;    // Ángulo en grados donde el marcador toca la PCB/Papel
-const int SERVO_ARRIBA = 115;  // Ángulo en grados donde el marcador queda libre en el aire
+### 2. Compilar el Binario AVR para Hardware / Wokwi
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build_mega.ps1
 ```
-
----
-
-### 3. Delays de Velocidad por Paso (`micros`)
-```cpp
-const unsigned long DELAY_PASO1_US = 6000;  // Delay Eje Y
-const unsigned long DELAY_PASO2_US = 1300;  // Delay Eje X
-const unsigned long DELAY_INTERPOLADO_US = 1400; // Delay base para trazado vectorial
-```
+*Genera el binario ejecutable `build/sketch.ino.elf` usando los registros reales del microcontrolador ATmega2560.*
 
 ---
 
-### 4. Distancias Físicas y Offsets Mecánicos
-```cpp
-const float DISTANCIA_REAL_X_CM = 28.3f; // Distancia en cm desde Switch SW4 a SW5
-const float DISTANCIA_REAL_Y_CM = 21.5f; // Distancia en cm desde Switch SW2 a SW3
+## 🔌 Esquema de Conexiones Wokwi (`diagram.json`)
 
-const float OFFSET_ORIGEN_X_CM = 1.9f;  // Distancia del centro físico al (0,0) de trabajo
-const float OFFSET_ORIGEN_Y_CM = 2.8f;  
-```
+| Componente | Pin Hardware Arduino Mega | Pin Componente Wokwi |
+|---|---|---|
+| **Motor Eje Y** | Pin 22, Pin 2, Pin 3, Pin 4 | `A+`, `A-`, `B+`, `B-` |
+| **Motor Eje X** | Pin 5, Pin 6, Pin 7, Pin 8 | `A+`, `A-`, `B+`, `B-` |
+| **Servo Eje Z** | Pin 13, 5V, GND | `PWM`, `V+`, `GND` |
+| **SW1 (Start/Stop)** | Pin 30, GND | `1.l`, `2.l` |
+| **SW2 (Y Límite A)** | Pin 9, GND | `1.l`, `2.l` |
+| **SW3 (Y Límite B)** | Pin 10, GND | `1.l`, `2.l` |
+| **SW4 (X Límite A)** | Pin 11, GND | `1.l`, `2.l` |
+| **SW5 (X Límite B)** | Pin 12, GND | `1.l`, `2.l` |

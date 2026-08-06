@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = "cnc.ino"
+diagram = "diagram.json"

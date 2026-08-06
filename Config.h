@@ -91,15 +91,7 @@ struct Punto {
 };
 
 // Secuencia de medio paso (Half-stepping) de 8 fases para ULN2003
-const int PASO_SECUENCIA[8][4] = {
-  {HIGH, LOW,  LOW,  LOW},
-  {HIGH, HIGH, LOW,  LOW},
-  {LOW,  HIGH, LOW,  LOW},
-  {LOW,  HIGH, HIGH, LOW},
-  {LOW,  LOW,  HIGH, LOW},
-  {LOW,  LOW,  HIGH, HIGH},
-  {LOW,  LOW,  LOW,  HIGH},
-  {HIGH, LOW,  LOW,  HIGH}
-};
+// NOTA: La definición real vive en Config.cpp (una sola definición, regla ODR de C++)
+extern const int PASO_SECUENCIA[8][4];
 
 #endif // CONFIG_H

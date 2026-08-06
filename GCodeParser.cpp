@@ -69,7 +69,7 @@ void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPor
   if (tieneClave(linea, 'M')) {
     int mVal = (int)obtenerValor(linea, 'M', -1);
     
-    if (mVal == 3 || mVal == 30) {
+    if (mVal == 3) {
       // M3 / M03: Bajar Lápiz (Encender Spindle)
       servoZ.mover(SERVO_ABAJO);
     } else if (mVal == 5) {

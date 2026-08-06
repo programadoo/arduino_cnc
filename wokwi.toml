@@ -1,4 +1,4 @@
 [wokwi]
 version = 1
-firmware = "cnc.ino"
+firmware = "arduino_cnc.ino"
 diagram = "diagram.json"

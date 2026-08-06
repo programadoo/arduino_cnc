@@ -16,7 +16,7 @@ c:\Users\HP\Desktop\arduino\
 ├── MotionPlanner.cpp   # Implementación del algoritmo de interpolación lineal 2D
 ├── GCodeParser.h       # Interfaz del parser de comandos G-Code y buffer serie
 ├── GCodeParser.cpp     # Intérprete de comandos G-Code (G0, G1, G28, M3, M5)
-├── cnc.ino             # Archivo principal de Arduino (Setup, Loop y Estado Global)
+├── arduino_cnc.ino    # Archivo principal de Arduino (Setup, Loop y Estado Global)
 └── README.md           # Documentación del proyecto (este archivo)
 ```
 

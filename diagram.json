@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Antigravity",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-mega", "id": "mega", "top": 100, "left": 100, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": -120, "left": 350, "attrs": {} },
+    { "type": "wokwi-stepper-motor", "id": "stepper1", "top": -120, "left": 50, "attrs": { "size": "17" } },
+    { "type": "wokwi-stepper-motor", "id": "stepper2", "top": -120, "left": 200, "attrs": { "size": "17" } },
+    { "type": "wokwi-pushbutton", "id": "btn1", "top": 450, "left": 100, "attrs": { "color": "green", "label": "SW1 Start/Stop" } },
+    { "type": "wokwi-pushbutton", "id": "sw2", "top": 450, "left": 200, "attrs": { "color": "blue", "label": "SW2 Y-Limit A" } },
+    { "type": "wokwi-pushbutton", "id": "sw3", "top": 450, "left": 300, "attrs": { "color": "blue", "label": "SW3 Y-Limit B" } },
+    { "type": "wokwi-pushbutton", "id": "sw4", "top": 450, "left": 400, "attrs": { "color": "red", "label": "SW4 X-Limit A" } },
+    { "type": "wokwi-pushbutton", "id": "sw5", "top": 450, "left": 500, "attrs": { "color": "red", "label": "SW5 X-Limit B" } }
+  ],
+  "connections": [
+    [ "mega:13", "servo1:PWM", "green", [ "v0" ] ],
+    [ "mega:GND.1", "servo1:GND", "black", [ "v0" ] ],
+    [ "mega:5V.1", "servo1:V+", "red", [ "v0" ] ],
+    [ "mega:22", "stepper1:A-", "purple", [ "v0" ] ],
+    [ "mega:2", "stepper1:A+", "purple", [ "v0" ] ],
+    [ "mega:3", "stepper1:B-", "purple", [ "v0" ] ],
+    [ "mega:4", "stepper1:B+", "purple", [ "v0" ] ],
+    [ "mega:5", "stepper2:A-", "orange", [ "v0" ] ],
+    [ "mega:6", "stepper2:A+", "orange", [ "v0" ] ],
+    [ "mega:7", "stepper2:B-", "orange", [ "v0" ] ],
+    [ "mega:8", "stepper2:B+", "orange", [ "v0" ] ],
+    [ "mega:30", "btn1:1.A", "green", [ "v0" ] ],
+    [ "mega:GND.1", "btn1:2.A", "black", [ "v0" ] ],
+    [ "mega:9", "sw2:1.A", "blue", [ "v0" ] ],
+    [ "mega:GND.1", "sw2:2.A", "black", [ "v0" ] ],
+    [ "mega:10", "sw3:1.A", "blue", [ "v0" ] ],
+    [ "mega:GND.1", "sw3:2.A", "black", [ "v0" ] ],
+    [ "mega:11", "sw4:1.A", "red", [ "v0" ] ],
+    [ "mega:GND.1", "sw4:2.A", "black", [ "v0" ] ],
+    [ "mega:12", "sw5:1.A", "red", [ "v0" ] ],
+    [ "mega:GND.1", "sw5:2.A", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

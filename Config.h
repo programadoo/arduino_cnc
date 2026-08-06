@@ -90,8 +90,8 @@ struct Punto {
   bool bajarLapiz; 
 };
 
-// Secuencia de medio paso (Half-stepping) de 8 fases para ULN2003
+// Secuencia de 4 fases para motores bipolares (Wokwi / NEMA 17 / ULN2003)
 // NOTA: La definición real vive en Config.cpp (una sola definición, regla ODR de C++)
-extern const int PASO_SECUENCIA[8][4];
+extern const int PASO_SECUENCIA[4][4];
 
 #endif // CONFIG_H

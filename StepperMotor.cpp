@@ -16,7 +16,7 @@ void StepperMotor::begin() {
 }
 
 void StepperMotor::darPaso(bool sentidoHorario) {
-  pasoIdx = sentidoHorario ? (pasoIdx + 1) % 8 : (pasoIdx - 1 + 8) % 8;
+  pasoIdx = sentidoHorario ? (pasoIdx + 1) % 4 : (pasoIdx - 1 + 4) % 4;
   
   for (int i = 0; i < 4; i++) {
     digitalWrite(pins[i], PASO_SECUENCIA[pasoIdx][i]);

@@ -60,10 +60,18 @@ float GCodeParser::obtenerValor(const char* linea, char clave, float valorDefect
   return valorDefecto;
 }
 
-void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar) {
+void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar, DemoCallback fnDemo) {
   limpiarLinea(linea);
 
   if (strlen(linea) == 0) return;
+
+  // --- COMANDOS ESPECIALES DEMO / PCB ---
+  if (strstr(linea, "DEMO") || strstr(linea, "PCB")) {
+    if (fnDemo != NULL) {
+      fnDemo();
+    }
+    return;
+  }
 
   // --- COMANDOS M ---
   if (tieneClave(linea, 'M')) {
@@ -140,7 +148,7 @@ void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPor
   }
 }
 
-void GCodeParser::escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar) {
+void GCodeParser::escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar, DemoCallback fnDemo) {
   while (Serial.available() > 0) {
     char c = Serial.read();
     Serial.print(c); // Eco visual en la terminal
@@ -149,7 +157,7 @@ void GCodeParser::escucharSerial(float pasosPorCmX, float pasosPorCmY, Calibraci
       rxBuffer[rxIndex] = '\0';
 
       if (rxIndex > 0) {
-        procesarComando(rxBuffer, pasosPorCmX, pasosPorCmY, fnCalibrar);
+        procesarComando(rxBuffer, pasosPorCmX, pasosPorCmY, fnCalibrar, fnDemo);
         Serial.println(F("ok"));
       }
 

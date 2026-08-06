@@ -6,6 +6,7 @@
 #include "InputUtils.h"
 
 typedef void (*CalibracionCallback)();
+typedef void (*DemoCallback)();
 
 class GCodeParser {
 private:
@@ -27,8 +28,8 @@ public:
   GCodeParser(MotionPlanner& mp, ServoZ& sz);
 
   void begin();
-  void escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar);
-  void procesarComando(char* linea, float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar);
+  void escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar, DemoCallback fnDemo = NULL);
+  void procesarComando(char* linea, float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar, DemoCallback fnDemo = NULL);
   
   void setPosicionActualCm(float x, float y);
   float getPosXActualCm() const;

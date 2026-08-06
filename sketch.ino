@@ -28,23 +28,40 @@ SwitchInput sw3(PIN_SW3);     // Motor Y Límite B
 SwitchInput sw4(PIN_SW4);     // Motor X Límite A
 SwitchInput sw5(PIN_SW5);     // Motor X Límite B
 
-// --- VECTOR DE COORDENADAS: CIRCUITO COMPLETO (COMPATIBILIDAD VECINDAD) ---
+// --- VECTOR DE COORDENADAS: PROYECTO REAL PCB (ejemplo_pcb.gcode) ---
 const Punto TRAZO_CIRCUITO[] = {
-  { 0.0,  0.0, false},
-  {-2.1,  0.8, true},
-  {-0.4,  0.8, true},
-  {-0.4,  1.8, true},
-  { 0.0,  1.8, true},
-  { 0.0, -0.6, true},
-  { 0.4,  1.8, true},
-  { 0.4,  0.8, true},
-  { 2.1,  0.8, true},
-  {-0.4, -2.0, true},
-  {-0.4, -0.1, true},
-  { 2.1, -0.1, true},
-  { 0.4, -1.2, true},
-  { 0.4, -2.0, true},
-  { 0.0,  0.0, false}
+  // 1. Ir a origen sin bajar lápiz
+  {  0.0f,  0.0f, false },
+  
+  // 2. Marco exterior PCB (10cm x 8cm)
+  {  0.5f,  0.5f, false },
+  { 10.5f,  0.5f, true  },
+  { 10.5f,  8.5f, true  },
+  {  0.5f,  8.5f, true  },
+  {  0.5f,  0.5f, true  },
+
+  // 3. Pista VCC Principal
+  {  2.0f,  2.0f, false },
+  {  8.0f,  2.0f, true  },
+
+  // 4. Pista GND Principal
+  {  2.0f,  7.0f, false },
+  {  8.0f,  7.0f, true  },
+
+  // 5. Pista IC Componentes Zig-Zag
+  {  3.0f,  2.0f, false },
+  {  3.0f,  4.0f, true  },
+  {  5.0f,  4.0f, true  },
+  {  5.0f,  6.0f, true  },
+  {  7.0f,  6.0f, true  },
+  {  7.0f,  7.0f, true  },
+
+  // 6. Pad de Salida
+  {  8.0f,  4.5f, false },
+  {  9.5f,  4.5f, true  },
+
+  // 7. Retorno a Origen
+  {  0.0f,  0.0f, false }
 };
 
 const int TOTAL_PUNTOS = sizeof(TRAZO_CIRCUITO) / sizeof(TRAZO_CIRCUITO[0]);
@@ -108,7 +125,8 @@ void iniciarTrazadoDirecto() {
   indicePuntoActual = 0;
   planner.resetSegmento();
   estadoGlobal = TRAZANDO_DIBUJO;
-  Serial.println(F("--> INICIANDO TRAZADO DIRECTO..."));
+  Serial.println(F("--> INICIANDO TRAZADO DEL CIRCUITO REAL PCB (ejemplo_pcb.gcode)..."));
+  Serial.println(F("  >> Trazando marco exterior, pistas VCC/GND y conexiones de componentes..."));
 }
 
 void iniciarCalibracionManual() {
@@ -380,7 +398,7 @@ void loop() {
   sw4.update(); sw5.update();
 
   // Escuchar stream de comandos G-Code desde la PC
-  gcodeParser.escucharSerial(pasosPorCmX, pasosPorCmY, callbackCalibracionGCode);
+  gcodeParser.escucharSerial(pasosPorCmX, pasosPorCmY, callbackCalibracionGCode, iniciarTrazadoDirecto);
 
   int estadoSW1 = sw1.getEstado();
 

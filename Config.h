@@ -61,7 +61,7 @@ const float PASOS_POR_CM_DEFAULT_Y = 223.25f;  // ~4800 pasos / 21.5 cm
 
 // Parámetros de temporizaciones
 const unsigned long TIEMPO_DOBLE_CLICK_MS = 400; 
-const unsigned long TIEMPO_ANTIRREBOTE = 35;
+const unsigned long TIEMPO_ANTIRREBOTE = 10;
 const long MAX_PASOS_SEGURIDAD = 60000; // Pasos máximos de seguridad para calibración
 
 // =========================================================

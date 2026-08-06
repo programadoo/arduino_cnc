@@ -30,35 +30,35 @@
       "id": "btnSW1",
       "top": 350,
       "left": -80,
-      "attrs": { "color": "green" }
+      "attrs": { "color": "green", "label": "SW1 Start/Stop" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnSW2",
       "top": 350,
       "left": 0,
-      "attrs": { "color": "blue" }
+      "attrs": { "color": "blue", "label": "SW2 Y-A" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnSW3",
       "top": 350,
       "left": 80,
-      "attrs": { "color": "blue" }
+      "attrs": { "color": "blue", "label": "SW3 Y-B" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnSW4",
       "top": 350,
       "left": 160,
-      "attrs": { "color": "red" }
+      "attrs": { "color": "red", "label": "SW4 X-A" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btnSW5",
       "top": 350,
       "left": 240,
-      "attrs": { "color": "red" }
+      "attrs": { "color": "red", "label": "SW5 X-B" }
     }
   ],
   "connections": [
@@ -78,20 +78,20 @@
     ["mega:7",  "stepperX:1B", "orange", []],
     ["mega:8",  "stepperX:2B", "orange", []],
 
-    ["mega:30", "btnSW1:1.l", "green",  []],
-    ["mega:GND.1","btnSW1:2.l","black",  []],
+    ["mega:30", "btnSW1:1.A", "green",  []],
+    ["mega:GND.1","btnSW1:2.A","black",  []],
 
-    ["mega:9",  "btnSW2:1.l", "blue",   []],
-    ["mega:GND.1","btnSW2:2.l","black",  []],
+    ["mega:9",  "btnSW2:1.A", "blue",   []],
+    ["mega:GND.1","btnSW2:2.A","black",  []],
 
-    ["mega:10", "btnSW3:1.l", "blue",   []],
-    ["mega:GND.1","btnSW3:2.l","black",  []],
+    ["mega:10", "btnSW3:1.A", "blue",   []],
+    ["mega:GND.1","btnSW3:2.A","black",  []],
 
-    ["mega:11", "btnSW4:1.l", "red",    []],
-    ["mega:GND.1","btnSW4:2.l","black",  []],
+    ["mega:11", "btnSW4:1.A", "red",    []],
+    ["mega:GND.1","btnSW4:2.A","black",  []],
 
-    ["mega:12", "btnSW5:1.l", "red",    []],
-    ["mega:GND.1","btnSW5:2.l","black",  []]
+    ["mega:12", "btnSW5:1.A", "red",    []],
+    ["mega:GND.1","btnSW5:2.A","black",  []]
   ],
   "dependencies": {}
 }

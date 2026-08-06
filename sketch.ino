@@ -125,112 +125,117 @@ void iniciarCalibracionManual() {
   estadoM1 = CAL_BUSCANDO_SW_A; ultimoPaso1Us = micros(); pasosSeguridadCalibM1 = 0;
   estadoM2 = CAL_BUSCANDO_SW_A; ultimoPaso2Us = micros(); pasosSeguridadCalibM2 = 0;
   Serial.println(F("--> INICIANDO CALIBRACION AUTOMATICA DE EJES..."));
+  Serial.println(F("  >> Eje Y buscando SW2 (Limite A)... Presiona SW2 (Boton Azul)"));
+  Serial.println(F("  >> Eje X buscando SW4 (Limite A)... Presiona SW4 (Boton Rojo)"));
+}
 
-  // Bucle síncrono hasta completar la calibración para comandos G28
-  while (estadoGlobal == CALIBRANDO_INICIAL) {
-    unsigned long ahoraUs = micros();
-    unsigned long ahoraMs = millis();
+void procesarCalibracionPaso() {
+  if (estadoGlobal != CALIBRANDO_INICIAL) return;
 
-    servoZ.update();
-    sw2.update(); sw3.update();
-    sw4.update(); sw5.update();
+  unsigned long ahoraUs = micros();
 
-    // --- EJE Y ---
-    switch (estadoM1) {
-      case CAL_BUSCANDO_SW_A:
-        if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) { 
-          ultimoPaso1Us = ahoraUs; motorY.darPaso(true); pasosSeguridadCalibM1++;
-        }
-        if (sw2.isPressed()) { pasosMedidosM1 = 0; pasosSeguridadCalibM1 = 0; estadoM1 = CAL_BUSCANDO_SW_B; }
-        if (pasosSeguridadCalibM1 > MAX_PASOS_SEGURIDAD) {
-          detencionDeEmergencia(); return;
-        }
-        break;
-
-      case CAL_BUSCANDO_SW_B:
-        if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) { 
-          ultimoPaso1Us = ahoraUs; motorY.darPaso(false); pasosMedidosM1++; 
-        }
-        if (sw3.isPressed() && pasosMedidosM1 > 200) {
-          pasosPorCmY = (float)pasosMedidosM1 / DISTANCIA_REAL_Y_CM;
-          pasosObjetivoCentroM1 = pasosMedidosM1 / 2;
-          pasosOffsetM1 = (long)(OFFSET_ORIGEN_Y_CM * pasosPorCmY);
-          estadoM1 = CAL_MOVIENDO_CENTRO; 
-        }
-        break;
-
-      case CAL_MOVIENDO_CENTRO:
-        if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) {
-          ultimoPaso1Us = ahoraUs;
-          if (pasosMedidosM1 > pasosObjetivoCentroM1) { motorY.darPaso(true); pasosMedidosM1--; }
-          else { estadoM1 = CAL_APLICANDO_OFFSET; }
-        }
-        break;
-
-      case CAL_APLICANDO_OFFSET:
-        if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) {
-          ultimoPaso1Us = ahoraUs;
-          if (pasosRecorridosOffsetM1 < abs(pasosOffsetM1)) {
-            motorY.darPaso(pasosOffsetM1 > 0); pasosRecorridosOffsetM1++;
-          } else { estadoM1 = CAL_LISTO; }
-        }
-        break;
-
-      case CAL_LISTO: case CAL_ERROR: break;
-    }
-
-    // --- EJE X ---
-    switch (estadoM2) {
-      case CAL_BUSCANDO_SW_A:
-        if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) { 
-          ultimoPaso2Us = ahoraUs; motorX.darPaso(true); pasosSeguridadCalibM2++;
-        }
-        if (sw4.isPressed()) { pasosMedidosM2 = 0; pasosSeguridadCalibM2 = 0; estadoM2 = CAL_BUSCANDO_SW_B; }
-        if (pasosSeguridadCalibM2 > MAX_PASOS_SEGURIDAD) {
-          detencionDeEmergencia(); return;
-        }
-        break;
-
-      case CAL_BUSCANDO_SW_B:
-        if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) { 
-          ultimoPaso2Us = ahoraUs; motorX.darPaso(false); pasosMedidosM2++; 
-        }
-        if (sw5.isPressed() && pasosMedidosM2 > 1500) {
-          pasosPorCmX = (float)pasosMedidosM2 / DISTANCIA_REAL_X_CM;
-          pasosObjetivoCentroM2 = pasosMedidosM2 / 2;
-          pasosOffsetM2 = (long)(OFFSET_ORIGEN_X_CM * pasosPorCmX);
-          estadoM2 = CAL_MOVIENDO_CENTRO; 
-        }
-        break;
-
-      case CAL_MOVIENDO_CENTRO:
-        if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) {
-          ultimoPaso2Us = ahoraUs;
-          if (pasosMedidosM2 > pasosObjetivoCentroM2) { motorX.darPaso(true); pasosMedidosM2--; }
-          else { estadoM2 = CAL_APLICANDO_OFFSET; }
-        }
-        break;
-
-      case CAL_APLICANDO_OFFSET:
-        if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) {
-          ultimoPaso2Us = ahoraUs;
-          if (pasosRecorridosOffsetM2 < abs(pasosOffsetM2)) {
-            motorX.darPaso(pasosOffsetM2 > 0); pasosRecorridosOffsetM2++;
-          } else { estadoM2 = CAL_LISTO; }
-        }
-        break;
-
-      case CAL_LISTO: case CAL_ERROR: break;
-    }
-
-    if (estadoM1 == CAL_LISTO && estadoM2 == CAL_LISTO) {
-      motorY.apagar(); motorX.apagar();
-      motorX.setPosicion(0); motorY.setPosicion(0);
-      gcodeParser.setPosicionActualCm(0.0f, 0.0f);
-      estadoGlobal = SISTEMA_REPOSO;
-      Serial.println(F("=== CALIBRACION EXITOSA (G28) ==="));
+  // --- EJE Y ---
+  switch (estadoM1) {
+    case CAL_BUSCANDO_SW_A:
+      if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) { 
+        ultimoPaso1Us = ahoraUs; motorY.darPaso(true); pasosSeguridadCalibM1++;
+      }
+      if (sw2.isPressed()) { 
+        pasosMedidosM1 = 0; pasosSeguridadCalibM1 = 0; estadoM1 = CAL_BUSCANDO_SW_B;
+        Serial.println(F("  >> [OK] SW2 Presionado! Eje Y invirtiendo marcha, buscando SW3... Presiona SW3"));
+      }
+      if (pasosSeguridadCalibM1 > MAX_PASOS_SEGURIDAD) {
+        detencionDeEmergencia(); return;
+      }
       break;
-    }
+
+    case CAL_BUSCANDO_SW_B:
+      if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) { 
+        ultimoPaso1Us = ahoraUs; motorY.darPaso(false); pasosMedidosM1++; 
+      }
+      if (sw3.isPressed() && pasosMedidosM1 > 50) {
+        pasosPorCmY = (float)pasosMedidosM1 / DISTANCIA_REAL_Y_CM;
+        pasosObjetivoCentroM1 = pasosMedidosM1 / 2;
+        pasosOffsetM1 = (long)(OFFSET_ORIGEN_Y_CM * pasosPorCmY);
+        estadoM1 = CAL_MOVIENDO_CENTRO; 
+        Serial.println(F("  >> [OK] SW3 Presionado! Eje Y Calibrado. Moviendo al centro..."));
+      }
+      break;
+
+    case CAL_MOVIENDO_CENTRO:
+      if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) {
+        ultimoPaso1Us = ahoraUs;
+        if (pasosMedidosM1 > pasosObjetivoCentroM1) { motorY.darPaso(true); pasosMedidosM1--; }
+        else { estadoM1 = CAL_APLICANDO_OFFSET; }
+      }
+      break;
+
+    case CAL_APLICANDO_OFFSET:
+      if (ahoraUs - ultimoPaso1Us >= DELAY_PASO1_US) {
+        ultimoPaso1Us = ahoraUs;
+        if (pasosRecorridosOffsetM1 < abs(pasosOffsetM1)) {
+          motorY.darPaso(pasosOffsetM1 > 0); pasosRecorridosOffsetM1++;
+        } else { estadoM1 = CAL_LISTO; }
+      }
+      break;
+
+    case CAL_LISTO: case CAL_ERROR: break;
+  }
+
+  // --- EJE X ---
+  switch (estadoM2) {
+    case CAL_BUSCANDO_SW_A:
+      if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) { 
+        ultimoPaso2Us = ahoraUs; motorX.darPaso(true); pasosSeguridadCalibM2++;
+      }
+      if (sw4.isPressed()) { 
+        pasosMedidosM2 = 0; pasosSeguridadCalibM2 = 0; estadoM2 = CAL_BUSCANDO_SW_B;
+        Serial.println(F("  >> [OK] SW4 Presionado! Eje X invirtiendo marcha, buscando SW5... Presiona SW5"));
+      }
+      if (pasosSeguridadCalibM2 > MAX_PASOS_SEGURIDAD) {
+        detencionDeEmergencia(); return;
+      }
+      break;
+
+    case CAL_BUSCANDO_SW_B:
+      if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) { 
+        ultimoPaso2Us = ahoraUs; motorX.darPaso(false); pasosMedidosM2++; 
+      }
+      if (sw5.isPressed() && pasosMedidosM2 > 50) {
+        pasosPorCmX = (float)pasosMedidosM2 / DISTANCIA_REAL_X_CM;
+        pasosObjetivoCentroM2 = pasosMedidosM2 / 2;
+        pasosOffsetM2 = (long)(OFFSET_ORIGEN_X_CM * pasosPorCmX);
+        estadoM2 = CAL_MOVIENDO_CENTRO; 
+        Serial.println(F("  >> [OK] SW5 Presionado! Eje X Calibrado. Moviendo al centro..."));
+      }
+      break;
+
+    case CAL_MOVIENDO_CENTRO:
+      if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) {
+        ultimoPaso2Us = ahoraUs;
+        if (pasosMedidosM2 > pasosObjetivoCentroM2) { motorX.darPaso(true); pasosMedidosM2--; }
+        else { estadoM2 = CAL_APLICANDO_OFFSET; }
+      }
+      break;
+
+    case CAL_APLICANDO_OFFSET:
+      if (ahoraUs - ultimoPaso2Us >= DELAY_PASO2_US) {
+        ultimoPaso2Us = ahoraUs;
+        if (pasosRecorridosOffsetM2 < abs(pasosOffsetM2)) {
+          motorX.darPaso(pasosOffsetM2 > 0); pasosRecorridosOffsetM2++;
+        } else { estadoM2 = CAL_LISTO; }
+      }
+      break;
+
+    case CAL_LISTO: case CAL_ERROR: break;
+  }
+
+  if (estadoM1 == CAL_LISTO && estadoM2 == CAL_LISTO) {
+    motorY.apagar(); motorX.apagar();
+    motorX.setPosicion(0); motorY.setPosicion(0);
+    gcodeParser.setPosicionActualCm(0.0f, 0.0f);
+    estadoGlobal = SISTEMA_REPOSO;
+    Serial.println(F("=== CALIBRACION EXITOSA: AMBOS EJES EN ORIGEN (0,0) ==="));
   }
 }
 
@@ -401,6 +406,11 @@ void loop() {
       conteoClicksSW1 = 0;
       iniciarCalibracionManual();
     }
+  }
+
+  if (estadoGlobal == CALIBRANDO_INICIAL) {
+    procesarCalibracionPaso();
+    return;
   }
 
   if (estadoGlobal == SISTEMA_REPOSO || estadoGlobal == SISTEMA_ERROR) return;

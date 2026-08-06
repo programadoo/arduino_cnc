@@ -131,6 +131,7 @@ void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPor
       // Ejecución coordinada del segmento
       while (!planner.update(DELAY_INTERPOLADO_US)) {
         servoZ.update();
+        delayMicroseconds(100);
       }
 
       posXActualCm = nuevoX;

@@ -142,6 +142,7 @@ void GCodeParser::procesarComando(char* linea, float pasosPorCmX, float pasosPor
 void GCodeParser::escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar) {
   while (Serial.available() > 0) {
     char c = Serial.read();
+    Serial.print(c); // Eco visual en la terminal
 
     if (c == '\n' || c == '\r') {
       rxBuffer[rxIndex] = '\0';

@@ -244,7 +244,7 @@ void callbackCalibracionGCode() {
 // =========================================================
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println(F("=== INICIANDO PLOTEADOR PCB CON G-CODE (G0, G1, G28, M3, M5) ==="));
 
   motorY.begin();

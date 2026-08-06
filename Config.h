@@ -40,12 +40,12 @@ const int SERVO_ABAJO = 55;     // Marcador apoyado (trazando)
 const int SERVO_ARRIBA = 115;   // Marcador levantado (desplazamiento)
 const unsigned long TIEMPO_SERVO_MS = 250; // Tiempo no bloqueante para movimiento del servo
 
-// Velocidades de Calibración (Delays en microsegundos)
-const unsigned long DELAY_PASO1_US = 6000;  // Eje Y
-const unsigned long DELAY_PASO2_US = 1300;  // Eje X
+// Velocidades de Calibración y Trazado (Delays en microsegundos)
+const unsigned long DELAY_PASO1_US = 2000;  // Eje Y
+const unsigned long DELAY_PASO2_US = 2000;  // Eje X
 
 // Delay base para el trazado vector sincronizado (Interpolación Bresenham)
-const unsigned long DELAY_INTERPOLADO_US = 1400; 
+const unsigned long DELAY_INTERPOLADO_US = 2000; 
 
 // Distancias Físicas de Calibración (Mínimo a Máximo Switch)
 const float DISTANCIA_REAL_X_CM = 28.3f; 
@@ -55,9 +55,9 @@ const float DISTANCIA_REAL_Y_CM = 21.5f;
 const float OFFSET_ORIGEN_X_CM = 1.9f;  
 const float OFFSET_ORIGEN_Y_CM = 2.8f;  
 
-// Resolución por defecto (Teórica) para evitar divisiones por cero antes de calibrar
-const float PASOS_POR_CM_DEFAULT_X = 1473.5f; // ~41700 pasos / 28.3 cm
-const float PASOS_POR_CM_DEFAULT_Y = 223.25f;  // ~4800 pasos / 21.5 cm
+// Resolución por defecto (100 pasos por cm para respuesta ágil en tiempo real)
+const float PASOS_POR_CM_DEFAULT_X = 100.0f;
+const float PASOS_POR_CM_DEFAULT_Y = 100.0f;
 
 // Parámetros de temporizaciones
 const unsigned long TIEMPO_DOBLE_CLICK_MS = 400; 

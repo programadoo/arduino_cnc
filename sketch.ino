@@ -386,9 +386,9 @@ void loop() {
 
   // Detección de pulsaciones en SW1
   if (estadoSW1 == LOW && estadoSW1Anterior == HIGH) {
-    if (estadoGlobal != SISTEMA_REPOSO) {
+    if (estadoGlobal == TRAZANDO_DIBUJO) {
       detencionDeEmergencia();
-    } else {
+    } else if (estadoGlobal == SISTEMA_REPOSO) {
       conteoClicksSW1++;
       if (conteoClicksSW1 == 1) {
         tiempoPrimerClick = ahoraMs;

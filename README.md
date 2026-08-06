@@ -1,6 +1,6 @@
 # Documentación del Proyecto: Ploteador PCB / CNC Arduino Mega
 
-Este proyecto implementa un ploteador CNC de 2 ejes (X, Y) con elevador de lápiz/marcador en el eje Z mediante servomotor. El firmware está optimizado para **Arduino Mega 2560** mediante una arquitectura modular en C++ orientada a objetos, no bloqueante y sincronizada en microsegundos.
+Este proyecto implementa un ploteador CNC de 2 ejes (X, Y) con elevador de lápiz/marcador en el eje Z mediante servomotor. El firmware está optimizado para **Arduino Mega 2560** mediante una arquitectura modular en C++ orientada a objetos, no bloqueante, sincronizada en microsegundos y con soporte para **streaming de comandos G-Code vía Puerto Serie**.
 
 ---
 
@@ -14,6 +14,8 @@ c:\Users\HP\Desktop\arduino\
 ├── StepperMotor.cpp    # Implementación de la secuencia de pasos de motores
 ├── MotionPlanner.h     # Interfaz del planificador de trayectorias (Bresenham)
 ├── MotionPlanner.cpp   # Implementación del algoritmo de interpolación lineal 2D
+├── GCodeParser.h       # Interfaz del parser de comandos G-Code y buffer serie
+├── GCodeParser.cpp     # Intérprete de comandos G-Code (G0, G1, G28, M3, M5)
 ├── cnc.ino             # Archivo principal de Arduino (Setup, Loop y Estado Global)
 └── README.md           # Documentación del proyecto (este archivo)
 ```
@@ -80,23 +82,38 @@ Gestiona la cinemática de interpolación lineal coordinada de 2 ejes mediante e
 
 ---
 
-### 5. `cnc.ino`
+### 5. `GCodeParser.h` y `GCodeParser.cpp`
+Receptor e intérprete de comandos G-Code estándar para streaming en tiempo real vía USB.
+
+* `GCodeParser(MotionPlanner& mp, ServoZ& sz)`: Constructor asociado a las instancias del planificador y del servo.
+* `void escucharSerial(float pasosPorCmX, float pasosPorCmY, CalibracionCallback fnCalibrar)`: Escucha la consola serie sin bloquear el CPU. Al recibir `\n` ejecuta el comando y responde `ok`.
+* `void procesarComando(...)`: Tokeniza y ejecuta instrucciones:
+  * `G0` / `G00`: Posicionamiento rápido.
+  * `G1` / `G01`: Movimiento lineal coordinado X/Y.
+  * `G28`: Autocalibración de ejes.
+  * `M3` / `M03`: Bajar lápiz (servomotor a `SERVO_ABAJO`).
+  * `M5` / `M05`: Levantar lápiz (servomotor a `SERVO_ARRIBA`).
+  * `G90` / `G91`: Conmutación entre coordenadas absolutas y relativas.
+
+---
+
+### 6. `cnc.ino`
 Archivo de entrada de Arduino. Implementa la máquina de estados principal.
 
 * `setup()`: Inicializa el puerto Serie a 9600 baudios, arranca periféricos y posiciona el servo levantado.
 * `loop()`: 
-  1. Actualiza periódicamente `servoZ` y los 5 switches (`SW1` a `SW5`).
-  2. Detecta clics en `SW1` (clic simple = inicio calibración / parada de emergencia; doble clic = trazado directo).
-  3. Ejecuta el ciclo de calibración de ejes X e Y (`CALIBRANDO_INICIAL`) registrando distancias físicas y aplicando offsets.
-  4. Ejecuta el trazado de vector por vector (`TRAZANDO_DIBUJO`) llamando al planificador.
+  1. Escucha continuamente comandos G-Code vía `gcodeParser.escucharSerial(...)`.
+  2. Actualiza periódicamente `servoZ` y los 5 switches (`SW1` a `SW5`).
+  3. Detecta clics en `SW1` (clic simple = inicio calibración / parada de emergencia; doble clic = trazado directo).
+  4. Ejecuta el ciclo de calibración de ejes X e Y (`CALIBRANDO_INICIAL`) registrando distancias físicas y aplicando offsets.
+  5. Ejecuta el trazado estático o dinámico llamando al planificador.
 * `detencionDeEmergencia()`: Apaga motores, levanta lápiz y pasa el sistema a `SISTEMA_REPOSO`.
-* `iniciarTrazadoDirecto()`: Inicia el trazado inmediatamente utilizando la resolución teórica predeterminada.
 
 ---
 
 ## ⚠️ VALORES CRÍTICOS A REVISAR ANTES DE CARGAR AL ARDUINO MEGA
 
-Antes de compilar y subir el código al **Arduino Mega 2560**, debes revisar cuidadosamente los siguientes parámetros en **[Config.h](file:///c:/Users/HP/Desktop/arduino/Config.h)** para que coincidan con la construcción mecánica de tu máquina:
+Antes de compilar y subir el código al **Arduino Mega 2560**, debes revisar cuidadosamente los siguientes parámetros en **[Config.h](file:///c:/Users/HP/Desktop/arduino/Config.h)**:
 
 ### 1. Asignación Física de Pines
 ```cpp
@@ -122,7 +139,6 @@ const int PIN_SW5 = 12;  // Límite B (X)
 
 const int PIN_SERVO = 13; // Pin PWM del Servo Z
 ```
-* **Acción:** Confirma que el cableado de tus motores y finales de carrera coincida exactamente con estos pines del Mega.
 
 ---
 
@@ -131,17 +147,15 @@ const int PIN_SERVO = 13; // Pin PWM del Servo Z
 const int SERVO_ABAJO = 55;    // Ángulo en grados donde el marcador toca la PCB/Papel
 const int SERVO_ARRIBA = 115;  // Ángulo en grados donde el marcador queda libre en el aire
 ```
-* **Acción:** Ajusta estos grados según la altura física de la montura de tu lápiz. Si el servo ejerce mucha presión o rasga el papel, reduce la diferencia angular.
 
 ---
 
 ### 3. Delays de Velocidad por Paso (`micros`)
 ```cpp
-const unsigned long DELAY_PASO1_US = 6000;  // Delay Eje Y (Motores 28BYJ-48 con polea)
-const unsigned long DELAY_PASO2_US = 1300;  // Delay Eje X (Motores con husillo/rosca)
+const unsigned long DELAY_PASO1_US = 6000;  // Delay Eje Y
+const unsigned long DELAY_PASO2_US = 1300;  // Delay Eje X
 const unsigned long DELAY_INTERPOLADO_US = 1400; // Delay base para trazado vectorial
 ```
-* **Acción:** Si un motor pierde pasos o produce un zumbido agudo sin girar, **aumenta** este valor (ej. a `2000` o `8000`). Si se mueve muy lento, puedes ir reduciéndolo progresivamente.
 
 ---
 
@@ -153,13 +167,3 @@ const float DISTANCIA_REAL_Y_CM = 21.5f; // Distancia en cm desde Switch SW2 a S
 const float OFFSET_ORIGEN_X_CM = 1.9f;  // Distancia del centro físico al (0,0) de trabajo
 const float OFFSET_ORIGEN_Y_CM = 2.8f;  
 ```
-* **Acción:** Mide con una regla la distancia exacta entre los interruptores de límite de tu estructura física y actualiza estos valores en centímetros.
-
----
-
-### 5. Pasos Teóricos por Centímetro (Trazado Directo)
-```cpp
-const float PASOS_POR_CM_DEFAULT_X = 1473.5f; // Pasos/cm en husillo X
-const float PASOS_POR_CM_DEFAULT_Y = 223.25f;  // Pasos/cm en polea Y
-```
-* **Acción:** Si inicias un trazado directo sin calibrar los ejes previamente, estos valores determinan la escala del dibujo.

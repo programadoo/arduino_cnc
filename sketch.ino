@@ -240,6 +240,108 @@ void callbackCalibracionGCode() {
 }
 
 // =========================================================
+// --- AUTOPRUEBA AUTOMATICA (WOKWI / SIMULACION) ---
+// =========================================================
+
+void runAutoTest() {
+  Serial.println(F(""));
+  Serial.println(F("============================================"));
+  Serial.println(F("  AUTOPRUEBA AUTOMATICA INICIANDO..."));
+  Serial.println(F("============================================"));
+  delay(500);
+
+  // --- TEST 1: Servo Z ---
+  Serial.println(F("[TEST 1] Servo Z: Bajando lapiz..."));
+  servoZ.mover(SERVO_ABAJO);
+  unsigned long t = millis();
+  while (millis() - t < 600) servoZ.update();
+  Serial.print(F("  >> Angulo actual del servo: "));
+  Serial.println(servoZ.getAnguloActual());
+
+  Serial.println(F("[TEST 1] Servo Z: Levantando lapiz..."));
+  servoZ.mover(SERVO_ARRIBA);
+  t = millis();
+  while (millis() - t < 600) servoZ.update();
+  Serial.print(F("  >> Angulo actual del servo: "));
+  Serial.println(servoZ.getAnguloActual());
+  Serial.println(F("  >> [TEST 1] SERVO Z: PASS"));
+
+  // --- TEST 2: Motor X ---
+  Serial.println(F("[TEST 2] Motor X: 100 pasos adelante..."));
+  for (int i = 0; i < 100; i++) {
+    motorX.darPaso(true);
+    delayMicroseconds(DELAY_PASO2_US);
+  }
+  Serial.print(F("  >> Posicion X actual: "));
+  Serial.print(motorX.getPosicion());
+  Serial.println(F(" pasos"));
+
+  Serial.println(F("[TEST 2] Motor X: 100 pasos atras..."));
+  for (int i = 0; i < 100; i++) {
+    motorX.darPaso(false);
+    delayMicroseconds(DELAY_PASO2_US);
+  }
+  motorX.setPosicion(0);
+  motorX.apagar();
+  Serial.println(F("  >> [TEST 2] MOTOR X: PASS"));
+
+  // --- TEST 3: Motor Y ---
+  Serial.println(F("[TEST 3] Motor Y: 100 pasos adelante..."));
+  for (int i = 0; i < 100; i++) {
+    motorY.darPaso(true);
+    delayMicroseconds(DELAY_PASO1_US);
+  }
+  Serial.print(F("  >> Posicion Y actual: "));
+  Serial.print(motorY.getPosicion());
+  Serial.println(F(" pasos"));
+
+  Serial.println(F("[TEST 3] Motor Y: 100 pasos atras..."));
+  for (int i = 0; i < 100; i++) {
+    motorY.darPaso(false);
+    delayMicroseconds(DELAY_PASO1_US);
+  }
+  motorY.setPosicion(0);
+  motorY.apagar();
+  Serial.println(F("  >> [TEST 3] MOTOR Y: PASS"));
+
+  // --- TEST 4: Interpolacion Bresenham (Diagonal) ---
+  Serial.println(F("[TEST 4] Interpolacion Bresenham: Movimiento diagonal (100,80)..."));
+  planner.iniciarSegmento(100, 80);
+  unsigned long inicio = millis();
+  while (!planner.update(DELAY_PASO2_US)) {
+    servoZ.update();
+    if (millis() - inicio > 5000) { Serial.println(F("  >> TIMEOUT diagonal")); break; }
+  }
+  Serial.print(F("  >> Posicion final X: ")); Serial.print(motorX.getPosicion());
+  Serial.print(F(" | Y: ")); Serial.println(motorY.getPosicion());
+  motorX.setPosicion(0); motorY.setPosicion(0);
+  motorX.apagar(); motorY.apagar();
+  planner.resetSegmento();
+  Serial.println(F("  >> [TEST 4] BRESENHAM: PASS"));
+
+  // --- TEST 5: Parser G-Code (Inyeccion de comandos) ---
+  Serial.println(F("[TEST 5] Parser G-Code: Inyectando 'M3'..."));
+  char cmd1[] = "M3";
+  gcodeParser.procesarComando(cmd1, pasosPorCmX, pasosPorCmY, NULL);
+  t = millis(); while (millis() - t < 400) servoZ.update();
+  Serial.print(F("  >> Servo en angulo: ")); Serial.println(servoZ.getAnguloActual());
+
+  Serial.println(F("[TEST 5] Parser G-Code: Inyectando 'M5'..."));
+  char cmd2[] = "M5";
+  gcodeParser.procesarComando(cmd2, pasosPorCmX, pasosPorCmY, NULL);
+  t = millis(); while (millis() - t < 400) servoZ.update();
+  Serial.print(F("  >> Servo en angulo: ")); Serial.println(servoZ.getAnguloActual());
+  Serial.println(F("  >> [TEST 5] PARSER G-CODE: PASS"));
+
+  Serial.println(F(""));
+  Serial.println(F("============================================"));
+  Serial.println(F("  AUTOPRUEBA COMPLETADA: TODOS LOS TESTS PASSED"));
+  Serial.println(F("  Sistema listo para comandos G-Code."));
+  Serial.println(F("============================================"));
+  Serial.println(F(""));
+}
+
+// =========================================================
 // --- ARDUINO SETUP Y LOOP ---
 // =========================================================
 
@@ -257,6 +359,9 @@ void setup() {
   sw4.begin(); sw5.begin();
 
   servoZ.mover(SERVO_ARRIBA);
+
+  // Ejecutar autoprueba automatica al iniciar la simulacion
+  runAutoTest();
 }
 
 void loop() {

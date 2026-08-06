@@ -44,6 +44,10 @@ const unsigned long TIEMPO_SERVO_MS = 250; // Tiempo no bloqueante para movimien
 const unsigned long DELAY_PASO1_US = 2000;  // Eje Y
 const unsigned long DELAY_PASO2_US = 2000;  // Eje X
 
+// Velocidades de Calibración de 2 Etapas
+const unsigned long DELAY_BUSQUEDA_CALIB_US = 3000;   // Aproximación rápida a los límites
+const unsigned long DELAY_PRECISION_CALIB_US = 8000;  // Acercamiento lento de toque exacto en (0,0)
+
 // Delay base para el trazado vector sincronizado (Interpolación Bresenham)
 const unsigned long DELAY_INTERPOLADO_US = 2000; 
 

@@ -64,34 +64,34 @@
   "connections": [
     ["mega:GND.1", "mega:GND.2", "black", []],
 
-    ["mega:13",  "servoZ:PWM", "green",  []],
-    ["mega:5V.1","servoZ:V+",  "red",    []],
-    ["mega:GND.1","servoZ:GND","black",  []],
+    ["mega:13",    "servoZ:PWM", "green",  []],
+    ["mega:5V.1",  "servoZ:V+",  "red",    []],
+    ["mega:GND.1", "servoZ:GND", "black",  []],
 
-    ["mega:22", "stepperY:1A", "purple", []],
-    ["mega:2",  "stepperY:2A", "purple", []],
-    ["mega:3",  "stepperY:1B", "purple", []],
-    ["mega:4",  "stepperY:2B", "purple", []],
+    ["mega:22", "stepperY:A+", "purple", []],
+    ["mega:2",  "stepperY:A-", "purple", []],
+    ["mega:3",  "stepperY:B+", "purple", []],
+    ["mega:4",  "stepperY:B-", "purple", []],
 
-    ["mega:5",  "stepperX:1A", "orange", []],
-    ["mega:6",  "stepperX:2A", "orange", []],
-    ["mega:7",  "stepperX:1B", "orange", []],
-    ["mega:8",  "stepperX:2B", "orange", []],
+    ["mega:5",  "stepperX:A+", "orange", []],
+    ["mega:6",  "stepperX:A-", "orange", []],
+    ["mega:7",  "stepperX:B+", "orange", []],
+    ["mega:8",  "stepperX:B-", "orange", []],
 
-    ["mega:30", "btnSW1:1.A", "green",  []],
-    ["mega:GND.1","btnSW1:2.A","black",  []],
+    ["mega:30",    "btnSW1:1.l", "green",  []],
+    ["mega:GND.1", "btnSW1:2.l", "black",  []],
 
-    ["mega:9",  "btnSW2:1.A", "blue",   []],
-    ["mega:GND.1","btnSW2:2.A","black",  []],
+    ["mega:9",     "btnSW2:1.l", "blue",   []],
+    ["mega:GND.1", "btnSW2:2.l", "black",  []],
 
-    ["mega:10", "btnSW3:1.A", "blue",   []],
-    ["mega:GND.1","btnSW3:2.A","black",  []],
+    ["mega:10",    "btnSW3:1.l", "blue",   []],
+    ["mega:GND.1", "btnSW3:2.l", "black",  []],
 
-    ["mega:11", "btnSW4:1.A", "red",    []],
-    ["mega:GND.1","btnSW4:2.A","black",  []],
+    ["mega:11",    "btnSW4:1.l", "red",    []],
+    ["mega:GND.1", "btnSW4:2.l", "black",  []],
 
-    ["mega:12", "btnSW5:1.A", "red",    []],
-    ["mega:GND.1","btnSW5:2.A","black",  []]
+    ["mega:12",    "btnSW5:1.l", "red",    []],
+    ["mega:GND.1", "btnSW5:2.l", "black",  []]
   ],
   "dependencies": {}
 }

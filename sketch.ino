@@ -3,6 +3,7 @@
 #include "MotionPlanner.h"
 #include "InputUtils.h"
 #include "GCodeParser.h"
+#include <EEPROM.h>
 
 // =========================================================
 // --- INSTANCIAS GLOBALES ---
@@ -98,6 +99,52 @@ long pasosOffsetM2 = 0;
 long pasosRecorridosOffsetM2 = 0;
 unsigned long ultimoPaso2Us = 0;
 long pasosSeguridadCalibM2 = 0;
+
+// Constantes de Persistencia EEPROM para Apagones de Energía
+const int EEPROM_ADDR_MAGIC = 0;
+const int EEPROM_ADDR_X = 1;
+const int EEPROM_ADDR_Y = 5;
+const uint8_t EEPROM_MAGIC_VAL = 0x55;
+
+void guardarPosicionEEPROM(float x, float y) {
+  EEPROM.put(EEPROM_ADDR_X, x);
+  EEPROM.put(EEPROM_ADDR_Y, y);
+  EEPROM.update(EEPROM_ADDR_MAGIC, EEPROM_MAGIC_VAL);
+}
+
+void limpiarEEPROM() {
+  EEPROM.update(EEPROM_ADDR_MAGIC, 0x00);
+}
+
+void verificarRecuperacionApagon() {
+  uint8_t magic = EEPROM.read(EEPROM_ADDR_MAGIC);
+  if (magic == EEPROM_MAGIC_VAL) {
+    float xGuardado = 0.0f;
+    float yGuardado = 0.0f;
+    EEPROM.get(EEPROM_ADDR_X, xGuardado);
+    EEPROM.get(EEPROM_ADDR_Y, yGuardado);
+
+    if (abs(xGuardado) > 0.05f || abs(yGuardado) > 0.05f) {
+      Serial.println(F(""));
+      Serial.println(F("⚠️ DETECTADO REINICIO / APAGON DE ENERGIA PREVIO!"));
+      Serial.print(F("  >> Posición recuperada de EEPROM: X=")); Serial.print(xGuardado, 2);
+      Serial.print(F(" cm | Y=")); Serial.println(yGuardado, 2);
+      Serial.println(F("  >> Retornando automáticamente al Origen (0,0)..."));
+
+      servoZ.mover(SERVO_ARRIBA);
+      planner.iniciarSegmento(0, 0);
+      while (!planner.update(DELAY_INTERPOLADO_US)) {
+        servoZ.update();
+        delayMicroseconds(100);
+      }
+      motorX.setPosicion(0); motorY.setPosicion(0);
+      motorX.apagar(); motorY.apagar();
+      gcodeParser.setPosicionActualCm(0.0f, 0.0f);
+      Serial.println(F("=== RECUPERACION EXITOSA: AMBOS EJES Y SERVO RETORNADOS A ORIGEN (0,0) ==="));
+    }
+    limpiarEEPROM();
+  }
+}
 
 // Declaración previa de funciones
 void iniciarCalibracionManual();
@@ -335,12 +382,20 @@ void runAutoTest() {
     servoZ.update();
     if (millis() - inicio > 5000) { Serial.println(F("  >> TIMEOUT diagonal")); break; }
   }
-  Serial.print(F("  >> Posicion final X: ")); Serial.print(motorX.getPosicion());
+  Serial.print(F("  >> Posicion alcanzada X: ")); Serial.print(motorX.getPosicion());
   Serial.print(F(" | Y: ")); Serial.println(motorY.getPosicion());
+
+  Serial.println(F("  >> Retornando fisicamente a Origen (0,0)..."));
+  planner.iniciarSegmento(0, 0);
+  inicio = millis();
+  while (!planner.update(DELAY_PASO2_US)) {
+    servoZ.update();
+    if (millis() - inicio > 5000) break;
+  }
   motorX.setPosicion(0); motorY.setPosicion(0);
   motorX.apagar(); motorY.apagar();
   planner.resetSegmento();
-  Serial.println(F("  >> [TEST 4] BRESENHAM: PASS"));
+  Serial.println(F("  >> [TEST 4] BRESENHAM Y RETORNO FISICO A ORIGEN: PASS"));
 
   // --- TEST 5: Parser G-Code (Inyeccion de comandos) ---
   Serial.println(F("[TEST 5] Parser G-Code: Inyectando 'M3'..."));
@@ -354,7 +409,7 @@ void runAutoTest() {
   gcodeParser.procesarComando(cmd2, pasosPorCmX, pasosPorCmY, NULL);
   t = millis(); while (millis() - t < 400) servoZ.update();
   Serial.print(F("  >> Servo en angulo: ")); Serial.println(servoZ.getAnguloActual());
-  Serial.println(F("  >> [TEST 5] PARSER G-CODE: PASS"));
+  Serial.println(F("  >> [TEST 5] PARSER G-CODE Y SERVO Z ARRIBA: PASS"));
 
   Serial.println(F(""));
   Serial.println(F("============================================"));
@@ -385,6 +440,9 @@ void setup() {
 
   // Ejecutar autoprueba automatica al iniciar la simulacion
   runAutoTest();
+
+  // Verificar si hubo un corte de energia previo y recuperar origen (0,0)
+  verificarRecuperacionApagon();
 }
 
 void loop() {

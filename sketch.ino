@@ -438,11 +438,20 @@ void loop() {
   // =========================================================
   if (estadoGlobal == TRAZANDO_DIBUJO) {
     if (indicePuntoActual >= TOTAL_PUNTOS) {
+      servoZ.mover(SERVO_ARRIBA);
+      Serial.println(F("  >> Retornando automáticamente al Origen (0,0)..."));
+      planner.iniciarSegmento(0, 0);
+      while (!planner.update(DELAY_INTERPOLADO_US)) {
+        servoZ.update();
+        delayMicroseconds(100);
+      }
       motorY.apagar();
       motorX.apagar();
-      servoZ.mover(SERVO_ARRIBA);
+      motorX.setPosicion(0);
+      motorY.setPosicion(0);
+      gcodeParser.setPosicionActualCm(0.0f, 0.0f);
       estadoGlobal = SISTEMA_REPOSO;
-      Serial.println(F("=== TRAZADO COMPLETADO CON EXITO ==="));
+      Serial.println(F("=== TRAZADO COMPLETADO CON EXITO: RETORNO AUTOMATICO A ORIGEN (0,0) ==="));
       return;
     }
 

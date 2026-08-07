@@ -4,6 +4,35 @@ Este proyecto implementa un ploteador CNC de 2 ejes (X, Y) con elevador de lápi
 
 ---
 
+## 🚀 PASO A PASO: CÓMO SUBIR EL FIRMWARE AL ARDUINO MEGA 2560 REAL
+
+Sigue estos sencillos pasos para flashear tu placa física:
+
+### Método 1: Usando `ArduinoMega_CNC_Firmware.zip` (Recomendado)
+
+1. **Descargar / Ubicar el paquete ZIP:**
+   - Ubica el archivo **`ArduinoMega_CNC_Firmware.zip`** (generado en la raíz de este proyecto o en [guia_operativa_cnc.md](file:///C:/Users/HP/.gemini/antigravity-ide/brain/d4301a6b-ab07-44d5-91fd-e13294526eb6/guia_operativa_cnc.md)).
+2. **Descomprimir:**
+   - Descomprime el archivo ZIP en una carpeta de tu PC (ejemplo: `C:\ArduinoMega_CNC\`).
+   - Verás los 10 archivos necesarios (`sketch.ino`, `Config.h`, `Config.cpp`, etc.) en esa única carpeta.
+3. **Abrir en Arduino IDE:**
+   - Abre **Arduino IDE** (descárgalo gratis en [arduino.cc](https://www.arduino.cc/en/software) si no lo tienes).
+   - Ve a `Archivo -> Abrir...` y selecciona **`sketch.ino`**.
+   - Arduino IDE cargará automáticamente todas las pestañas con los demás archivos `.h` y `.cpp`.
+4. **Configurar la Placa en Arduino IDE:**
+   - **Placa:** `Herramientas -> Placa -> Arduino AVR Boards -> Arduino Mega or Mega 2560`
+   - **Procesador:** `Herramientas -> Procesador -> ATmega2560 (Mega 2560)`
+   - **Puerto:** `Herramientas -> Puerto -> (Selecciona el puerto COM de tu Arduino Mega)`
+5. **Compilar y Subir:**
+   - Haz clic en el botón de **Subir** (flecha `→` en la barra superior).
+   - Espera a que diga `"Subido con éxito"`.
+6. **Verificar Funcionamiento:**
+   - Abre el **Monitor Serie** (`Herramientas -> Monitor Serie`).
+   - Configura la velocidad a **`115200 baudios`**.
+   - Verás los mensajes de inicio y autoprueba.
+
+---
+
 ## 📦 ARCHIVOS ESENCIALES PARA CARGAR AL ARDUINO MEGA REAL
 
 Para compilar y subir el firmware a tu placa física de **Arduino Mega 2560** desde el Arduino IDE o PlatformIO, debes abrir la carpeta que contiene únicamente los siguientes **10 archivos esenciales**:
@@ -36,13 +65,13 @@ Para compilar y subir el firmware a tu placa física de **Arduino Mega 2560** de
 
 ---
 
-## 🧠 RETORNO AUTOMÁTICO AL ORIGEN (0,0)
+## 🧠 RETORNO AUTOMÁTICO AL ORIGEN (0,0) Y PROTECCIÓN EEPROM
 
-El firmware incluye una función inteligente de seguimiento de posición y retorno automático:
+El firmware incluye una función inteligente de seguimiento de posición, retorno automático y recuperación de cortes de luz:
 
 1. **Rastreo continuo de coordenadas:** Durante todo el trabajo de trazado, el planificador calcula la posición absoluta `(posXActualCm, posYActualCm)`.
 2. **Retorno Automático al Finalizar:** Al completar la última línea de un circuito PCB, el sistema levanta el lápiz (`M5`) y ejecuta automáticamente un desplazamiento de retorno a la coordenada originaria **(0,0)** antes de apagar los motores.
-3. **Reinicio Seguro:** Al encender o reiniciar la placa, el firmware asume la posición actual como su referencia de origen `(0,0)`, garantizando que cualquier comando de retorno vuelva de forma segura sin colisionar.
+3. **Recuperación de Apagones (EEPROM):** En caso de un corte inesperado de electricidad, al regresar la luz el firmware detecta la coordenada grabada en la memoria no volátil EEPROM y retorna los motores y el servo de forma segura al origen `(0,0)`.
 
 ---
 
